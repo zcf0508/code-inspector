@@ -137,26 +137,33 @@ export class MyElement extends LitElement {
     xhr.send();
   };
 
-  // 移动按钮
-  moveSwitch = (e: MouseEvent) => {
-    if (composedPath(e).includes(this)) {
-      this.hoverSwitch = true;
+  moveSwitch = (e: MouseEvent | TouchEvent) => {
+  if (composedPath(e).includes(this)) {
+    this.hoverSwitch = true;
+  } else {
+    this.hoverSwitch = false;
+  }
+  // 判断是否在拖拽按钮
+  if (this.dragging) {
+    this.moved = true;
+    let pageX, pageY;
+    if (e instanceof TouchEvent) {
+      pageX = e.touches[0].pageX;
+      pageY = e.touches[0].pageY;
     } else {
-      this.hoverSwitch = false;
+      pageX = e.pageX;
+      pageY = e.pageY;
     }
-    // 判断是否在拖拽按钮
-    if (this.dragging) {
-      this.moved = true;
-      this.inspectorSwitchRef.style.left =
-        this.mousePosition.baseX + (e.pageX - this.mousePosition.moveX) + 'px';
-      this.inspectorSwitchRef.style.top =
-        this.mousePosition.baseY + (e.pageY - this.mousePosition.moveY) + 'px';
-      return;
-    }
-  };
+    this.inspectorSwitchRef.style.left =
+      this.mousePosition.baseX + (pageX - this.mousePosition.moveX) + 'px';
+    this.inspectorSwitchRef.style.top =
+      this.mousePosition.baseY + (pageY - this.mousePosition.moveY) + 'px';
+    return;
+  }
+};
 
   // 鼠标移动渲染遮罩层位置
-  handleMouseMove = (e: MouseEvent) => {
+  handleMouseMove = (e: MouseEvent | TouchEvent) => {
     if (
       ((this.isTracking(e) && !this.dragging) || this.open) &&
       !this.hoverSwitch
@@ -234,12 +241,21 @@ export class MyElement extends LitElement {
   };
 
   // 记录鼠标按下时初始位置
-  recordMousePosition = (e: MouseEvent) => {
+  recordMousePosition = (e: MouseEvent | TouchEvent) => {
+    let pageX, pageY;
+    if (e instanceof TouchEvent) {
+      pageX = e.touches[0].pageX;
+      pageY = e.touches[0].pageY;
+    } else {
+      pageX = e.pageX;
+      pageY = e.pageY;
+    }
+
     this.mousePosition = {
       baseX: this.inspectorSwitchRef.offsetLeft,
       baseY: this.inspectorSwitchRef.offsetTop,
-      moveX: e.pageX,
-      moveY: e.pageY,
+      moveX: pageX,
+      moveY: pageY,
     };
     this.dragging = true;
     e.preventDefault();
@@ -277,31 +293,50 @@ export class MyElement extends LitElement {
     this.eliminateWarning();
     this.printTip();
     window.addEventListener('mousemove', this.handleMouseMove);
+    window.addEventListener('touchmove', this.handleMouseMove);
     window.addEventListener('mousemove', this.moveSwitch);
+    window.addEventListener('touchmove', this.moveSwitch);
     window.addEventListener('click', this.handleMouseClick, true);
     document.addEventListener('keyup', this.handleKeyUp);
     document.addEventListener('mouseleave', this.removeCover);
+    document.addEventListener('touchend', this.removeCover);
     document.addEventListener('mouseup', this.handleMouseUp);
+    document.addEventListener('touchend', this.handleMouseUp);
     this.inspectorSwitchRef.addEventListener(
       'mousedown',
       this.recordMousePosition
     );
+    this.inspectorSwitchRef.addEventListener(
+      'touchstart',
+      this.recordMousePosition
+    );
     this.inspectorSwitchRef.addEventListener('click', this.switch);
+    this.inspectorSwitchRef.addEventListener('touchend', this.switch);
   }
 
   disconnectedCallback(): void {
     window.removeEventListener('mousemove', this.handleMouseMove);
+    window.removeEventListener('touchmove', this.handleMouseMove);
     window.removeEventListener('mousemove', this.moveSwitch);
+    window.removeEventListener('touchmove', this.moveSwitch);
     window.removeEventListener('click', this.handleMouseClick, true);
     document.removeEventListener('keyup', this.handleKeyUp);
     document.removeEventListener('mouseleave', this.removeCover);
+    document.removeEventListener('touchend', this.removeCover);
     document.removeEventListener('mouseup', this.handleMouseUp);
-    this.inspectorSwitchRef &&
+    document.removeEventListener('touchend', this.handleMouseUp);
+    if(this.inspectorSwitchRef) {
       this.inspectorSwitchRef.removeEventListener(
         'mousedown',
         this.recordMousePosition
       );
+      this.inspectorSwitchRef.removeEventListener(
+        'touchstart',
+        this.recordMousePosition
+      );
+    }
     this.inspectorSwitchRef.removeEventListener('click', this.switch);
+    this.inspectorSwitchRef.removeEventListener('touchend', this.switch);
   }
 
   render() {
